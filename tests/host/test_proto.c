@@ -13,12 +13,21 @@
 #include <assert.h>
 #include "bl_proto.h"
 #include "bl_crc32.h"
+#include "bl_flash.h"
 
 int main(int argc, char **argv)
 {
 	assert(argc == 2);
 	assert(bl_crc32((const uint8_t *)"123456789", 9) == 0xCBF43926u);
 	printf("crc32 canonical check 0xCBF43926 OK -> zlib/host compatible\n");
+
+	/* flash-region bounds (overflow-safe) */
+	assert(bl_offset_in_range(0, 100));
+	assert(bl_offset_in_range(BL_APP_SIZE - 4, 4));
+	assert(!bl_offset_in_range(BL_APP_SIZE, 4));       /* at the very end */
+	assert(!bl_offset_in_range(BL_APP_SIZE - 2, 4));   /* straddles the end */
+	assert(!bl_offset_in_range(0xFFFFFFF0u, 0x20));    /* unsigned overflow */
+	printf("flash bounds checks OK\n");
 
 	FILE *fp = fopen(argv[1], "rb");
 	assert(fp);

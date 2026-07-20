@@ -14,10 +14,15 @@
 #include <stdint.h>
 #include "bl_uart.h"
 #include "bl_proto.h"
+#include "bl_crc32.h"
+#include "bl_flash.h"
 
-#define APP_BASE   0x08008000U
+#define APP_BASE   BL_APP_BASE
 
 typedef void (*app_entry_t)(void);
+
+/* Highest byte offset written since the last erase — the region VERIFY checks. */
+static uint32_t g_image_len;
 
 /* Does APP_BASE hold a plausible application?
  * A valid image starts with an initial stack pointer that lives in SRAM
@@ -67,6 +72,12 @@ static int read_command(uint8_t *buf, struct bl_frame *out)
 	return bl_frame_parse(buf, total, out);
 }
 
+static uint32_t rd_u32le(const uint8_t *p)
+{
+	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+	       ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
 static void handle_frame(const struct bl_frame *f)
 {
 	switch (f->cmd) {
@@ -75,18 +86,54 @@ static void handle_frame(const struct bl_frame *f)
 		bl_uart_putc(BL_VERSION);
 		break;
 
+	case BL_CMD_ERASE:
+		if (bl_flash_erase_app() == 0) {
+			g_image_len = 0;
+			bl_uart_putc(BL_ACK);
+		} else {
+			bl_uart_putc(BL_NACK);
+		}
+		break;
+
+	case BL_CMD_WRITE: {
+		/* payload: offset:u32 + data */
+		if (f->len < 4U) {
+			bl_uart_putc(BL_NACK);
+			break;
+		}
+		uint32_t offset = rd_u32le(f->payload);
+		const uint8_t *data = &f->payload[4];
+		uint32_t dlen = (uint32_t)f->len - 4U;
+
+		if (bl_flash_write(offset, data, dlen) == 0) {
+			uint32_t end = offset + dlen;
+			if (end > g_image_len) {
+				g_image_len = end;
+			}
+			bl_uart_putc(BL_ACK);
+		} else {
+			bl_uart_putc(BL_NACK);
+		}
+		break;
+	}
+
+	case BL_CMD_VERIFY: {
+		/* payload: expected CRC-32 of the whole written image */
+		if (f->len != 4U) {
+			bl_uart_putc(BL_NACK);
+			break;
+		}
+		uint32_t want = rd_u32le(f->payload);
+		uint32_t got = bl_crc32((const uint8_t *)BL_APP_BASE, g_image_len);
+		bl_uart_putc((want == got) ? BL_ACK : BL_NACK);
+		break;
+	}
+
 	case BL_CMD_JUMP:
 		bl_uart_putc(BL_ACK);
 		if (app_is_present()) {
 			boot_application();          /* does not return */
 		}
-		break;
-
-	case BL_CMD_ERASE:
-	case BL_CMD_WRITE:
-	case BL_CMD_VERIFY:
-		/* TODO M3: implement flash erase / chunked write / verify. */
-		bl_uart_putc(BL_NACK);
 		break;
 
 	default:
@@ -112,6 +159,7 @@ int main(void)
 	struct bl_frame frame;
 
 	bl_uart_init();
+	bl_flash_init();
 
 	/* No host activity and a valid app present -> just run the app. */
 	if (!host_knocking(2000000U) && app_is_present()) {

@@ -8,8 +8,8 @@ add_executable(bootloader.elf
     src/bl_uart.c
     src/bl_proto.c
     src/bl_crc32.c
+    src/bl_flash.c
     src/startup_stm32f411retx.s
-    # src/bl_flash.c  # TODO M3
 )
 
 target_compile_options(bootloader.elf PRIVATE ${MCU_FLAGS} -Wall -ffunction-sections -fdata-sections -Os -g3)

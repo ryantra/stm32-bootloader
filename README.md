@@ -9,11 +9,12 @@ A custom bootloader for the STM32F411RE that can flash a new application image o
 verify it with a CRC, and hand control to the application. Includes a Python host tool that
 sends the image, and a demo application that lives in a separate flash region.
 
-> **Status: in progress.** M1–M2 done. The bootloader and app build and link to their
-> separate flash regions; the bootloader validates and jumps to the app (VTOR relocation);
-> and it speaks the framed UART protocol (HELLO/ACK, CRC-checked frames, JUMP boots the
-> app). The CRC-32 and frame parser are interop-tested against the Python host in CI.
-> Flash erase/write/verify (M3) is next — ERASE/WRITE/VERIFY currently return NACK.
+> **Status: feature-complete (M1–M3), pending on-hardware validation.** The full update
+> path is implemented: the bootloader validates and jumps to the app (VTOR relocation),
+> speaks the framed UART protocol (CRC-checked), and erases/programs/verifies the STM32F411
+> application flash. The CRC-32, frame parser, and flash-bounds logic are unit-tested
+> against the Python host in CI. The remaining step is validating the end-to-end flash on a
+> physical Nucleo-F411RE and recording a demo (M4).
 
 ## Why a bootloader
 
@@ -91,9 +92,9 @@ python3 host/uploader.py --port /dev/ttyACM0 --image build/app/app.bin
 
 - [x] M1 — App links at `0x08008000`; bootloader validates and jumps to it (VTOR relocation working). Verified in CI: both images build and land at the correct addresses.
 - [x] M2 — UART command interface: polling USART2 driver, framed protocol with CRC-32, HELLO/ACK, JUMP. CRC + parser interop-tested against the Python host in CI.
-- [ ] M3 — Flash erase + chunked write driver
-- [ ] M4 — Host uploader with per-chunk and whole-image CRC32
-- [ ] M5 — README demo GIF + `v1.0` release
+- [x] M3 — STM32F411 flash driver: unlock, sector erase (2-7), word programming with readback; wired to ERASE/WRITE/VERIFY. Overflow-safe bounds check unit-tested.
+- [x] M4 — Host uploader with per-frame and whole-image CRC-32 (done); end-to-end update path complete.
+- [ ] On-hardware validation + demo GIF, then promote the release from `v1.0-rc1` to `v1.0`.
 
 ## Skills demonstrated
 
