@@ -5,6 +5,36 @@ on:
   pull_request:
 
 jobs:
+  firmware-build:
+    name: firmware build (arm-none-eabi-gcc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM GCC and CMake
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi cmake
+      - name: Build bootloader and app
+        run: |
+          for t in bootloader app; do
+            cmake -S $t -B build/$t \
+              -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/arm-none-eabi-gcc.cmake" \
+              -DCMAKE_BUILD_TYPE=Release
+            cmake --build build/$t
+          done
+      - name: Verify link addresses (bootloader @ 0x08000000, app @ 0x08008000)
+        run: |
+          check() { arm-none-eabi-objdump -h "$1" | awk -v want="$2" \
+            '/\.isr_vector/{print "  "$2" VMA="$4; if ($4==want) ok=1} END{exit !ok}'; }
+          check build/bootloader/bootloader.elf 08000000
+          check build/app/app.elf 08008000
+          echo "link addresses OK"
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            build/bootloader/bootloader.bin
+            build/app/app.bin
+
   host-tool:
     name: host uploader (python)
     runs-on: ubuntu-latest

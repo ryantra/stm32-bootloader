@@ -1,12 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 project(app C ASM)
 
-# NOTE: add a Cortex-M4 startup file to src/ before this will link.
 set(MCU_FLAGS -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard)
 
 add_executable(app.elf
     src/main.c
-    # src/startup_stm32f411retx.s   # TODO: add startup
+    src/startup_stm32f411retx.s
 )
 
 target_compile_options(app.elf PRIVATE ${MCU_FLAGS} -Wall -ffunction-sections -fdata-sections -Os -g3)

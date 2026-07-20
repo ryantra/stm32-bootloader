@@ -1,13 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 project(bootloader C ASM)
 
-# NOTE: add a Cortex-M4 startup file (startup_stm32f411retx.s) to src/ before
-# this will link — you can reuse the one from the Nucleof411xx_drivers repo.
 set(MCU_FLAGS -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard)
 
 add_executable(bootloader.elf
     src/main.c
-    # src/startup_stm32f411retx.s   # TODO: add startup
+    src/startup_stm32f411retx.s
     # src/bl_uart.c src/bl_flash.c  # TODO M2/M3
 )
 

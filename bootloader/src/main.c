@@ -16,8 +16,18 @@
 
 typedef void (*app_entry_t)(void);
 
+/* Does APP_BASE hold a plausible application?
+ * A valid image starts with an initial stack pointer that lives in SRAM
+ * (0x2000_0000..0x2002_0000 on the F411RE's 128 KB). If flash is erased the
+ * word reads as 0xFFFFFFFF and we must NOT jump. */
+static int app_is_present(void)
+{
+    uint32_t app_sp = *(volatile uint32_t *)(APP_BASE);
+    return (app_sp >= 0x20000000U) && (app_sp <= 0x20020000U);
+}
+
 /* Jump to the application at APP_BASE: load its stack pointer and reset vector,
- * relocate the vector table, then transfer control. */
+ * relocate the vector table, then transfer control. Never returns. */
 static void boot_application(void)
 {
     uint32_t app_sp    = *(volatile uint32_t *)(APP_BASE);
@@ -37,9 +47,13 @@ int main(void)
 {
     /* TODO M2: if an update is requested (e.g. button held, or magic word in
      * a known RAM/flash location), stay in the bootloader and serve updates.
-     * For now, boot straight through to the application. */
-    boot_application();
+     * For now, boot straight through to the application when one is present. */
+    if (app_is_present()) {
+        boot_application();
+    }
 
+    /* No valid application (or boot_application unexpectedly returned):
+     * spin here. M2 will replace this with the UART update loop. */
     for (;;) { }
     return 0;
 }
