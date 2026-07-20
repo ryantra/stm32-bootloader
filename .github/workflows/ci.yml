@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  host-tool:
+    name: host uploader (python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install deps
+        run: pip install -r host/requirements.txt
+      - name: Syntax check
+        run: python -m py_compile host/uploader.py
+      - name: Lint
+        run: |
+          pip install flake8
+          flake8 host/uploader.py --max-line-length=100
+
+  firmware-analysis:
+    name: cppcheck (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+      - name: Run static analysis
+        run: |
+          cppcheck --enable=warning,performance,portability --inline-suppr \
+            --suppress=missingInclude --suppress=missingIncludeSystem \
+            bootloader/src app/src
