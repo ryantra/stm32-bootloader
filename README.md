@@ -9,10 +9,11 @@ A custom bootloader for the STM32F411RE that can flash a new application image o
 verify it with a CRC, and hand control to the application. Includes a Python host tool that
 sends the image, and a demo application that lives in a separate flash region.
 
-> **Status: in progress.** M1 is done — the bootloader and application build, link to
-> their separate flash regions, and the bootloader validates and jumps to the app with
-> vector-table relocation. UART transfer and flash programming (M2–M3) are next. Files
-> marked `TODO` are under active development.
+> **Status: in progress.** M1–M2 done. The bootloader and app build and link to their
+> separate flash regions; the bootloader validates and jumps to the app (VTOR relocation);
+> and it speaks the framed UART protocol (HELLO/ACK, CRC-checked frames, JUMP boots the
+> app). The CRC-32 and frame parser are interop-tested against the Python host in CI.
+> Flash erase/write/verify (M3) is next — ERASE/WRITE/VERIFY currently return NACK.
 
 ## Why a bootloader
 
@@ -89,7 +90,7 @@ python3 host/uploader.py --port /dev/ttyACM0 --image build/app/app.bin
 ## Milestones
 
 - [x] M1 — App links at `0x08008000`; bootloader validates and jumps to it (VTOR relocation working). Verified in CI: both images build and land at the correct addresses.
-- [ ] M2 — UART command interface in the bootloader (HELLO/ACK)
+- [x] M2 — UART command interface: polling USART2 driver, framed protocol with CRC-32, HELLO/ACK, JUMP. CRC + parser interop-tested against the Python host in CI.
 - [ ] M3 — Flash erase + chunked write driver
 - [ ] M4 — Host uploader with per-chunk and whole-image CRC32
 - [ ] M5 — README demo GIF + `v1.0` release

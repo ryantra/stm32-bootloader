@@ -5,8 +5,11 @@ set(MCU_FLAGS -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard)
 
 add_executable(bootloader.elf
     src/main.c
+    src/bl_uart.c
+    src/bl_proto.c
+    src/bl_crc32.c
     src/startup_stm32f411retx.s
-    # src/bl_uart.c src/bl_flash.c  # TODO M2/M3
+    # src/bl_flash.c  # TODO M3
 )
 
 target_compile_options(bootloader.elf PRIVATE ${MCU_FLAGS} -Wall -ffunction-sections -fdata-sections -Os -g3)

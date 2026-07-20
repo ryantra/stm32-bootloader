@@ -35,6 +35,18 @@ jobs:
             build/bootloader/bootloader.bin
             build/app/app.bin
 
+  protocol-tests:
+    name: protocol interop (host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run interop test
+        run: |
+          python3 tests/host/gen_frames.py frames.bin
+          gcc -Ibootloader/src tests/host/test_proto.c \
+              bootloader/src/bl_proto.c bootloader/src/bl_crc32.c -o test_proto
+          ./test_proto frames.bin
+
   host-tool:
     name: host uploader (python)
     runs-on: ubuntu-latest
